@@ -7,6 +7,19 @@ import json
 import os
 
 
+def _(path):
+    if path == None:
+        return u""
+    try:
+        return path.decode("UTF-8",errors='ignore')
+    except UnicodeDecodeError, e:
+        try:
+            return path.encode("UTF-8",errors='ignore')
+        except UnicodeEncodeError, e:
+            return path
+
+
+
 class Responce(object):
     def __init__(self, dom, config, root):
         self._dom = dom
@@ -65,112 +78,139 @@ class Config(object):
         return httplib.HTTPSConnection(self.host)
 
     def list(self, href):
-        folders = {}
-        files = {}
-        href = os.path.join("/", href)
-        conn = self.getConnection()
-        conn.request("PROPFIND", href, "", self.getHeaders())
-        response = conn.getresponse()
-        data = response.read()
-        if data == 'list: folder was not found':
-            return None, None
-        else:
-            dom = xml.dom.minidom.parseString(data)
-            responces = dom.getElementsByTagNameNS("DAV:", "response")
+        try:
             folders = {}
             files = {}
-            for dom in responces:
-                response = Responce(dom, self, href)
-                if response.isFolder() and response.href != href:
-                    folders[response.href] = response
-                else:
-                    files[response.href] = response
-        return folders, files
+            href = os.path.join(u"/", _(href))
+            conn = self.getConnection()
+            conn.request("PROPFIND", href, "", self.getHeaders())
+            response = conn.getresponse()
+            data = response.read()
+            if data == 'list: folder was not found':
+                return None, None
+            else:
+                dom = xml.dom.minidom.parseString(data)
+                responces = dom.getElementsByTagNameNS("DAV:", "response")
+                folders = {}
+                files = {}
+                for dom in responces:
+                    response = Responce(dom, self, href)
+                    if response.isFolder() and response.href != href:
+                        folders[response.href] = response
+                    else:
+                        files[response.href] = response
+            return folders, files
+        except Exception, e:
+            print(e)
 
     def sync(self, localpath, href, exclude=None):
-        localRoot, localFolders, localFiles = os.walk(localpath).next()
-        remoteFolders, remoteFiles = self.list(href)
-        if remoteFiles == None or remoteFolders == None:
-            remoteFiles = {}
-            remoteFolders = {}
-            self.mkdir(href)
+        try:
+            localpath = _(localpath)
+            href = _(href)
+            localRoot, localFolders, localFiles = os.walk(localpath).next()
+            remoteFolders, remoteFiles = self.list(href)
+            if remoteFiles == None or remoteFolders == None:
+                remoteFiles = {}
+                remoteFolders = {}
+                self.mkdir(href)
 
-        foldersToCreate = filter(
-            lambda folder: unicode(os.path.join(href, folder)) + "/" not in remoteFolders,
-            localFolders
-        )
+            foldersToCreate = filter(
+                lambda folder: os.path.join(href, folder).decode("UTF-8") + u"/" not in remoteFolders,
+                localFolders
+            )
 
-        for folder in foldersToCreate:
-            folderPath = os.path.join(href, folder)
-            self.mkdir(folderPath)
+            for folder in foldersToCreate:
+                folderPath = os.path.join(href, folder)
+                self.mkdir(folderPath)
 
-        filesToSync = filter(
-            lambda lFile: unicode(os.path.join(href, lFile)) not in remoteFiles,
-            localFiles
-        )
+            filesToSync = filter(
+                lambda lFile: os.path.join(href, lFile).decode("UTF-8") not in remoteFiles,
+                localFiles
+            )
 
-        for f in filesToSync:
-            localfilePath = os.path.join(localpath, f)
-            remoteFilePath = os.path.join(href, f)
-            self.upload(localfilePath, remoteFilePath)
+            for f in filesToSync:
+                localfilePath = os.path.join(localpath, f)
+                remoteFilePath = os.path.join(href, f)
+                self.upload(localfilePath, remoteFilePath)
 
-        for folder in localFolders:
-            localFolderPath = os.path.join(localpath, folder)
-            remoteFolderPath = os.path.join(href, folder)
-            if exclude:
-                bSync = exclude(localFolderPath, remoteFolderPath)
-            else:
-                bSync = True
-            if bSync:
-                self.sync(localFolderPath, remoteFolderPath, exclude)
+            for folder in localFolders:
+                localFolderPath = os.path.join(localpath, folder)
+                remoteFolderPath = os.path.join(href, folder)
+                if exclude:
+                    bSync = exclude(localFolderPath, remoteFolderPath)
+                else:
+                    bSync = True
+                if bSync:
+                    self.sync(localFolderPath, remoteFolderPath, exclude)
+        except Exception, e:
+            print(e)
 
     def mkdir(self, href):
-        href = os.path.join("/", href)
-        con = self.getConnection()
-        con.request("MKCOL", href, "", self.getHeaders())
-        return con.getresponse().read()
+        try:
+            href = os.path.join(u"/", _(href))
+            con = self.getConnection()
+            con.request("MKCOL", href, "", self.getHeaders())
+            return con.getresponse().read()
+        except Exception, e:
+            print(e)
 
     def download(self, href):
-        href = os.path.join("/", href)
-        conn = self.getConnection()
-        conn.request("GET", href, "", self.getHeaders())
-        return conn.getresponse().read()
+        try:
+            href = os.path.join(u"/", _(href))
+            conn = self.getConnection()
+            conn.request("GET", href, "", self.getHeaders())
+            return conn.getresponse().read()
+        except Exception, e:
+            print(e)
+
 
     def downloadTo(self, href, localpath):
-        href = os.path.join("/", href)
+        try:
+            href = os.path.join(u"/", _(href))
+            localpath = _(localpath)
 
-        conn = self.getConnection()
-        conn.request("GET", href, "", self.getHeaders())
-        responce = conn.getresponse()
-        with open(localpath, "w") as f:
-            while True:
-                data = responce.read(1024)
-                if not data:
-                    break
-                f.write(data)
+            conn = self.getConnection()
+            conn.request("GET", href, "", self.getHeaders())
+            responce = conn.getresponse()
+            with open(localpath, "w") as f:
+                while True:
+                    data = responce.read(1024)
+                    if not data:
+                        break
+                    f.write(data)
+        except Exception, e:
+            print(e)
 
     def delete(self, href):
-        href = os.path.join("/", href)
-        conn = self.getConnection()
-        conn.request("DELETE", href, "", self.getHeaders())
+        try:
+            href = os.path.join(u"/", _(href))
+            conn = self.getConnection()
+            conn.request("DELETE", href, "", self.getHeaders())
+        except Exception, e:
+            print(e)
 
     def upload(self, localpath, href):
+        localpath = _(localpath)
+        href = _(href)
         if os.path.islink(localpath):
-            return self.upload(os.readlink(localpath),href)
-        href = os.path.join("/", href)
-        conn = self.getConnection()
-        headers = self.getHeaders()
-        length = os.path.getsize(localpath)
-        headers.update({
-            "Content-Type": "application/binary",
-            "Content-Length": length,
-            "Expect": "100-continue"
-        })
-        with open(localpath, "r") as f:
-            data = f.read()
-            conn.request("PUT", href, data, headers)
-            response = conn.getresponse()
-            return response.read()
+            return self.upload(os.path.realpath(localpath), href)
+        try:
+            print "upload {0} {1}".format(localpath, href)
+            href = os.path.join(u"/", href)
+            conn = self.getConnection()
+            headers = self.getHeaders()
+            length = os.path.getsize(localpath)
+            headers.update({
+                "Content-Type": "application/binary",
+                "Content-Length": length,
+                "Expect": "100-continue"
+            })
+            with open(localpath, "r") as f:
+                conn.request("PUT", href, f, headers)
+                response = conn.getresponse()
+                return response.read()
+        except Exception, e:
+            print(e)
 
 
 class ConfigList(object):
