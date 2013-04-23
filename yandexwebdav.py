@@ -155,6 +155,8 @@ class Config(object):
         conn.request("DELETE", href, "", self.getHeaders())
 
     def upload(self, localpath, href):
+        if os.path.islink(localpath):
+            return self.upload(os.readlink(localpath),href)
         href = os.path.join("/", href)
         conn = self.getConnection()
         headers = self.getHeaders()
