@@ -6,6 +6,7 @@ import xml.dom.minidom
 import json
 import os
 import traceback
+import urllib
 
 TRYINGS = 3
 
@@ -16,10 +17,9 @@ def _(path):
     try:
         return path.decode("UTF-8", errors='ignore')
     except UnicodeDecodeError, e:
-        try:
-            return path.encode("UTF-8", errors='ignore')
-        except UnicodeEncodeError, e:
-            return path
+        return path.encode("UTF-8", errors='ignore')
+    except UnicodeEncodeError, e:
+        return path
 
 
 def log(txt):
@@ -27,7 +27,11 @@ def log(txt):
 
 
 def err(txt):
-    traceback.print_tb(txt)
+    traceback.print_exc()
+
+
+def remote(href):
+    return os.path.join("/", urllib.quote(_(href)))
 
 
 class RemoteObject(object):
@@ -141,7 +145,7 @@ class Config(object):
         log("sync: %s %s" % (localpath, href))
         try:
             localpath = _(localpath)
-            href = _(href)
+            href = remote(href)
             localRoot, localFolders, localFiles = os.walk(localpath).next()
             remoteFolders, remoteFiles = self.list(href)
             if remoteFiles is None or remoteFolders is None:
@@ -150,16 +154,16 @@ class Config(object):
                 self.mkdir(href)
 
             foldersToCreate = filter(
-                lambda folder: os.path.join(href, folder).decode("UTF-8") + u"/" not in remoteFolders,
+                lambda folder: os.path.join(href, _(folder)) + u"/" not in remoteFolders,
                 localFolders
             )
 
             for folder in foldersToCreate:
-                folderPath = os.path.join(href, folder)
+                folderPath = os.path.join(href, _(folder))
                 self.mkdir(folderPath)
 
             filesToSync = filter(
-                lambda lFile: os.path.join(href, lFile).decode("UTF-8") not in remoteFiles,
+                lambda lFile: os.path.join(href, _(lFile)) not in remoteFiles,
                 localFiles
             )
 
@@ -189,7 +193,7 @@ class Config(object):
         for iTry in range(TRYINGS):
             log("mkdir(%s): %s" % (iTry, href))
             try:
-                href = os.path.join(u"/", _(href))
+                href = remote(href)
                 con = self.getConnection()
                 con.request("MKCOL", href, "", self.getHeaders())
                 return con.getresponse().read()
@@ -205,7 +209,7 @@ class Config(object):
         for iTry in range(TRYINGS):
             try:
                 log("download(%s): %s" % (iTry, href))
-                href = os.path.join(u"/", _(href))
+                href = remote(href)
                 conn = self.getConnection()
                 conn.request("GET", href, "", self.getHeaders())
                 return conn.getresponse().read()
@@ -222,7 +226,7 @@ class Config(object):
         for iTry in range(TRYINGS):
             log("downloadTo(%s): %s %s" % (iTry, href, localpath))
             try:
-                href = os.path.join(u"/", _(href))
+                href = remote(href)
                 localpath = _(localpath)
 
                 conn = self.getConnection()
@@ -247,7 +251,7 @@ class Config(object):
         for iTry in range(TRYINGS):
             log("delete(%s): %s" % (iTry, href))
             try:
-                href = os.path.join(u"/", _(href))
+                href = remote(href)
                 conn = self.getConnection()
                 conn.request("DELETE", href, "", self.getHeaders())
                 return conn.getresponse().read()
@@ -262,14 +266,16 @@ class Config(object):
         :return: response
         """
         localpath = _(localpath)
-        href = _(href)
+        href = remote(href)
+        if not os.path.exists(localpath):
+            log("ERROR: localfile: %s not found" % localpath)
+            return
         if os.path.islink(localpath):
-            return self.upload(os.path.realpath(localpath), href)
+            return self.upload(os.path.abspath(os.path.realpath(localpath)), href)
             # 3 tryings to upload file
         for iTry in range(TRYINGS):
             log("upload(%s): %s %s" % (iTry, localpath, href))
             try:
-                log
                 "upload {0} {1}".format(localpath, href)
                 href = os.path.join(u"/", href)
                 conn = self.getConnection()
