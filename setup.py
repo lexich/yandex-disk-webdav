@@ -3,9 +3,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='yandexwebdav',
-    version='0.0.3',
+    version='0.0.5',
     include_package_data=True,
-    packages=find_packages(),
+    py_modules=['yandexwebdav'],
     url='https://github.com/lexich/yandex-disk-webdav',
     license='BSD',
     author='lexich',
