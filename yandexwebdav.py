@@ -14,11 +14,11 @@ TRYINGS = 3
 def _(path):
     if path is None:
         return u""
+    elif type(path) == unicode:
+        return path
     try:
-        return path.decode("UTF-8", errors='ignore')
+        return path.decode(u"UTF-8", errors=u'ignore')
     except UnicodeDecodeError, e:
-        return path.encode("UTF-8", errors='ignore')
-    except UnicodeEncodeError, e:
         return path
 
 
@@ -31,7 +31,9 @@ def err(txt):
 
 
 def remote(href):
-    return os.path.join("/", urllib.quote(_(href)))
+    href = _(href)
+    href = os.path.join(u"/", href)
+    return href
 
 
 class RemoteObject(object):
@@ -39,17 +41,17 @@ class RemoteObject(object):
         self._dom = dom
         self._config = config
         self.root = root
-        self.href = self._getEl("href")
-        self.length = self._getEl("getcontentlength")
-        self.name = self._getEl("displayname")
-        self.creationdate = self._getEl("creationdate")
+        self.href = self._getEl(u"href")
+        self.length = self._getEl(u"getcontentlength")
+        self.name = self._getEl(u"displayname")
+        self.creationdate = self._getEl(u"creationdate")
 
     def _getEl(self, name):
-        els = self._dom.getElementsByTagNameNS("DAV:", name)
+        els = self._dom.getElementsByTagNameNS(u"DAV:", name)
         return els[0].firstChild.nodeValue if len(els) > 0 else ""
 
     def isFolder(self):
-        els = self._dom.getElementsByTagNameNS("DAV:", "collection")
+        els = self._dom.getElementsByTagNameNS(u"DAV:", u"collection")
         return len(els) > 0
 
     def download(self):
@@ -80,9 +82,9 @@ class Config(object):
         :param opts: dictionary of property
         :return: self
         """
-        self.user = opts.get("user", "").encode("utf-8")
-        self.password = opts.get("password", "").encode("utf-8")
-        self.host = opts.get("host", "").encode("utf-8")
+        self.user = opts.get(u"user", u"").encode(u"utf-8")
+        self.password = opts.get(u"password", u"").encode(u"utf-8")
+        self.host = opts.get(u"host", u"webdav.yandex.ru").encode(u"utf-8")
         self.options = opts
 
     def getHeaders(self):
@@ -110,18 +112,18 @@ class Config(object):
         :return: list(folders, files) and list(None,None) if folder doesn't exist
         """
         for iTry in range(TRYINGS):
-            log("list(%s): %s" % (iTry, href))
+            log(u"list(%s): %s" % (iTry, href))
             try:
                 href = os.path.join(u"/", _(href))
                 conn = self.getConnection()
-                conn.request("PROPFIND", href, "", self.getHeaders())
+                conn.request("PROPFIND", href.encode("utf-8", errors=u'ignore'), u"", self.getHeaders())
                 response = conn.getresponse()
                 data = response.read()
                 if data == 'list: folder was not found':
                     return None, None
                 else:
                     dom = xml.dom.minidom.parseString(data)
-                    responces = dom.getElementsByTagNameNS("DAV:", "response")
+                    responces = dom.getElementsByTagNameNS(u"DAV:", u"response")
                     folders = {}
                     files = {}
                     for dom in responces:
@@ -142,7 +144,7 @@ class Config(object):
         :param exclude: filter folder which need to exlude
         :return: respose
         """
-        log("sync: %s %s" % (localpath, href))
+        log(u"sync: %s %s" % (localpath, href))
         try:
             localpath = _(localpath)
             href = remote(href)
@@ -191,11 +193,11 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            log("mkdir(%s): %s" % (iTry, href))
+            log(u"mkdir(%s): %s" % (iTry, href))
             try:
                 href = remote(href)
                 con = self.getConnection()
-                con.request("MKCOL", href, "", self.getHeaders())
+                con.request("MKCOL", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
                 return con.getresponse().read()
             except Exception, e:
                 err(e)
@@ -208,10 +210,10 @@ class Config(object):
         """
         for iTry in range(TRYINGS):
             try:
-                log("download(%s): %s" % (iTry, href))
+                log(u"download(%s): %s" % (iTry, href))
                 href = remote(href)
                 conn = self.getConnection()
-                conn.request("GET", href, "", self.getHeaders())
+                conn.request("GET", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception, e:
                 err(e)
@@ -224,15 +226,15 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            log("downloadTo(%s): %s %s" % (iTry, href, localpath))
+            log(u"downloadTo(%s): %s %s" % (iTry, href, localpath))
             try:
                 href = remote(href)
                 localpath = _(localpath)
 
                 conn = self.getConnection()
-                conn.request("GET", href, "", self.getHeaders())
+                conn.request("GET", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
                 responce = conn.getresponse()
-                with open(localpath, "w") as f:
+                with open(localpath, u"w") as f:
                     while True:
                         data = responce.read(1024)
                         if not data:
@@ -249,11 +251,11 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            log("delete(%s): %s" % (iTry, href))
+            log(u"delete(%s): %s" % (iTry, href))
             try:
                 href = remote(href)
                 conn = self.getConnection()
-                conn.request("DELETE", href, "", self.getHeaders())
+                conn.request("DELETE", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception, e:
                 err(e)
@@ -268,15 +270,14 @@ class Config(object):
         localpath = _(localpath)
         href = remote(href)
         if not os.path.exists(localpath):
-            log("ERROR: localfile: %s not found" % localpath)
+            log(u"ERROR: localfile: %s not found" % localpath)
             return
         if os.path.islink(localpath):
             return self.upload(os.path.abspath(os.path.realpath(localpath)), href)
             # 3 tryings to upload file
         for iTry in range(TRYINGS):
-            log("upload(%s): %s %s" % (iTry, localpath, href))
+            log(u"upload(%s): %s %s" % (iTry, localpath, href))
             try:
-                "upload {0} {1}".format(localpath, href)
                 href = os.path.join(u"/", href)
                 conn = self.getConnection()
                 headers = self.getHeaders()
@@ -286,12 +287,15 @@ class Config(object):
                     "Content-Length": length,
                     "Expect": "100-continue"
                 })
-                with open(localpath, "r") as f:
-                    conn.request("PUT", href, f, headers)
+                with open(localpath.encode("utf-8", errors=u'ignore'), u"r") as f:
+                    href = href.encode("utf-8", errors=u'ignore')
+                    href = urllib.quote(href)
+                    conn.request("PUT",href, f, headers)
                     response = conn.getresponse()
                     return response.read()
             except Exception, e:
                 err(e)
+
 
 if __name__ == "__main__":
     pass
