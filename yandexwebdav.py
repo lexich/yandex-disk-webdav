@@ -41,7 +41,8 @@ class RemoteObject(object):
         self._dom = dom
         self._config = config
         self.root = root
-        self.href = self._getEl(u"href")
+        href = self._getEl(u"href")
+        self.href = urllib.unquote(href.encode("utf-8")).decode("utf-8")
         self.length = self._getEl(u"getcontentlength")
         self.name = self._getEl(u"displayname")
         self.creationdate = self._getEl(u"creationdate")
