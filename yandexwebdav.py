@@ -3,10 +3,11 @@
 import httplib
 import base64
 import xml.dom.minidom
-import json
 import os
 import traceback
 import urllib
+import threading
+from Queue import Queue
 
 TRYINGS = 3
 
@@ -90,6 +91,28 @@ class Config(object):
         self.host = opts.get(u"host", u"webdav.yandex.ru").encode(u"utf-8")
         self.options = opts
 
+    def apply_async(self, func, params_list, limit=5):
+        q = Queue()
+        for params in params_list:
+            if type(params) is list or type(params) is tuple:
+                q.put(params, block=False)
+            else:
+                q.put([params],block=False)
+
+        def call():
+            while not q.empty():
+                args = q.get()
+                func(*args)
+
+        ths = []
+        for i in range(limit):
+            t = threading.Thread(target=call)
+            t.daemon = True
+            t.start()
+            ths.append(t)
+        for t in ths:
+            t.join()
+
     def getHeaders(self):
         """
         Get common headers
@@ -159,23 +182,19 @@ class Config(object):
                 self.mkdir(href)
 
             foldersToCreate = filter(
-                lambda folder: os.path.join(href, _(folder)) + u"/" not in remoteFolders,
-                localFolders
+                lambda folderPath: folderPath not in remoteFolders,
+                map(lambda folder: os.path.join(href, _(folder)) + u"/",
+                    localFolders)
             )
-
-            for folder in foldersToCreate:
-                folderPath = os.path.join(href, _(folder))
-                self.mkdir(folderPath)
+            self.apply_async(lambda path: self.mkdir(path), foldersToCreate)
 
             filesToSync = filter(
                 lambda lFile: os.path.join(href, _(lFile)) not in remoteFiles,
                 localFiles
             )
-
-            for f in filesToSync:
-                localfilePath = os.path.join(localpath, f)
-                remoteFilePath = os.path.join(href, f)
-                self.upload(localfilePath, remoteFilePath)
+            fileArgs = [(os.path.join(localpath, f), os.path.join(href, f))
+                        for f in filesToSync]
+            self.apply_async(lambda s, t: self.upload(s, t), fileArgs)
 
             for folder in localFolders:
                 localFolderPath = os.path.join(localpath, folder)
@@ -293,7 +312,7 @@ class Config(object):
                 with open(localpath.encode("utf-8", errors=u'ignore'), u"r") as f:
                     href = href.encode("utf-8", errors=u'ignore')
                     href = urllib.quote(href)
-                    conn.request("PUT",href, f, headers)
+                    conn.request("PUT", href, f, headers)
                     response = conn.getresponse()
                     return response.read()
             except Exception, e:
