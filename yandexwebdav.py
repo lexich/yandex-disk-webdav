@@ -293,20 +293,5 @@ class Config(object):
             except Exception, e:
                 err(e)
 
-
-class ConfigList(object):
-    def __init__(self, path):
-        self._configs = self.get_options(path)
-
-    @property
-    def config(self):
-        return self._configs
-
-    def get_options(self, path):
-        with open(path, 'r') as f:
-            options_list = json.load(f, "utf-8")
-        return map(lambda opt: Config(opt), options_list)
-
-
 if __name__ == "__main__":
     pass
