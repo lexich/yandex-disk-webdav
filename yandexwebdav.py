@@ -90,8 +90,9 @@ class Config(object):
         self.password = opts.get(u"password", u"").encode(u"utf-8")
         self.host = opts.get(u"host", u"webdav.yandex.ru").encode(u"utf-8")
         self.options = opts
+        self.limit = opts.get(u"limit", 4)
 
-    def apply_async(self, func, params_list, limit=5):
+    def apply_async(self, func, params_list):
         q = Queue()
         for params in params_list:
             if type(params) is list or type(params) is tuple:
@@ -105,7 +106,7 @@ class Config(object):
                 func(*args)
 
         ths = []
-        for i in range(limit):
+        for i in range(self.limit):
             t = threading.Thread(target=call)
             t.daemon = True
             t.start()
