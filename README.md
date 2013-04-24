@@ -8,7 +8,7 @@ Simple wrapper to work with yandex disk using webdav Basic Auth
 > easy_install yandexwebdav
 
 # Using
-> conf = Congif({
+> conf = Congig({
 > "name":"<-- username -->",
 > "password":"<-- password -->"
 > })
