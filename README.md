@@ -5,10 +5,11 @@ Simple wrapper to work with yandex disk using webdav Basic Auth
 
 # Install
 > pip install yandexwebdav
+
 > easy_install yandexwebdav
 
 # Using
-> conf = Congig({
+> conf = Config({
 > "name":"<-- username -->",
 > "password":"<-- password -->"
 > })
