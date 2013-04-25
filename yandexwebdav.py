@@ -7,7 +7,7 @@ import os
 import traceback
 import urllib
 import threading
-from Queue import Queue
+from Queue import Queue, Empty
 
 TRYINGS = 3
 
@@ -27,7 +27,8 @@ def log(txt):
     print(txt)
 
 
-def err(txt):
+def err(*args):
+    print args
     traceback.print_exc()
 
 
@@ -79,6 +80,42 @@ class RemoteObject(object):
         return self.href
 
 
+qWork = Queue()
+
+
+def __call():
+    while True:
+        try:
+            name, func, args = qWork.get()
+            func(*args)
+            qWork.task_done()
+        except Empty, e:
+            pass
+        except Exception, e:
+            err("Exception: {0}".format(name))
+
+
+threadsContainer = []
+
+
+def apply_async(name, func, params_list, limit=5):
+    for params in params_list:
+        if type(params) is list or type(params) is tuple:
+            item = (name, func, params)
+        else:
+            item = (name, func, [params, ])
+        res = qWork.put_nowait(item)
+
+    if len(threadsContainer) > 0:
+        return
+    for i in range(limit):
+        t = threading.Thread(target=__call)
+        t.daemon = True
+        threadsContainer.append(t)
+    for th in threadsContainer:
+        th.start()
+
+
 class Config(object):
     def __init__(self, opts):
         """
@@ -91,28 +128,6 @@ class Config(object):
         self.host = opts.get(u"host", u"webdav.yandex.ru").encode(u"utf-8")
         self.options = opts
         self.limit = opts.get(u"limit", 4)
-
-    def apply_async(self, func, params_list):
-        q = Queue()
-        for params in params_list:
-            if type(params) is list or type(params) is tuple:
-                q.put(params, block=False)
-            else:
-                q.put([params],block=False)
-
-        def call():
-            while not q.empty():
-                args = q.get()
-                func(*args)
-
-        ths = []
-        for i in range(self.limit):
-            t = threading.Thread(target=call)
-            t.daemon = True
-            t.start()
-            ths.append(t)
-        for t in ths:
-            t.join()
 
     def getHeaders(self):
         """
@@ -163,7 +178,7 @@ class Config(object):
             except Exception, e:
                 err(e)
 
-    def sync(self, localpath, href, exclude=None):
+    def sync(self, localpath, href, exclude=None, block=True):
         """
         Sync local and remote folders
         :param localpath: local folder
@@ -187,7 +202,7 @@ class Config(object):
                 map(lambda folder: os.path.join(href, _(folder)) + u"/",
                     localFolders)
             )
-            self.apply_async(lambda path: self.mkdir(path), foldersToCreate)
+            apply_async("mkdir", lambda path: self.mkdir(path), foldersToCreate, self.limit)
 
             filesToSync = filter(
                 lambda lFile: os.path.join(href, _(lFile)) not in remoteFiles,
@@ -195,7 +210,7 @@ class Config(object):
             )
             fileArgs = [(os.path.join(localpath, f), os.path.join(href, f))
                         for f in filesToSync]
-            self.apply_async(lambda s, t: self.upload(s, t), fileArgs)
+            apply_async("upload", lambda s, t: self.upload(s, t), fileArgs, self.limit)
 
             for folder in localFolders:
                 localFolderPath = os.path.join(localpath, folder)
@@ -205,9 +220,15 @@ class Config(object):
                 else:
                     bSync = True
                 if bSync:
-                    self.sync(localFolderPath, remoteFolderPath, exclude)
+                    apply_async(
+                        "sync",
+                        lambda localpath, href: self.sync(localpath, href, exclude, False),
+                        [(localFolderPath, remoteFolderPath),]
+                    )
         except Exception, e:
             err(e)
+        if block:
+            qWork.join()
 
     def mkdir(self, href):
         """
