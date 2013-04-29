@@ -18,7 +18,7 @@ def _(path):
     elif type(path) == unicode:
         return path
     try:
-        return path.decode(u"UTF-8", errors=u'ignore')
+        return path.decode(u"UTF-8")
     except UnicodeDecodeError, e:
         return path
 
@@ -158,7 +158,7 @@ class Config(object):
             try:
                 href = os.path.join(u"/", _(href))
                 conn = self.getConnection()
-                conn.request("PROPFIND", href.encode("utf-8", errors=u'ignore'), u"", self.getHeaders())
+                conn.request("PROPFIND", href.encode("utf-8"), u"", self.getHeaders())
                 response = conn.getresponse()
                 data = response.read()
                 if data == 'list: folder was not found':
@@ -241,7 +241,7 @@ class Config(object):
             try:
                 href = remote(href)
                 con = self.getConnection()
-                con.request("MKCOL", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
+                con.request("MKCOL", href.encode("utf-8"), "", self.getHeaders())
                 return con.getresponse().read()
             except Exception, e:
                 err(e)
@@ -257,7 +257,7 @@ class Config(object):
                 log(u"download(%s): %s" % (iTry, href))
                 href = remote(href)
                 conn = self.getConnection()
-                conn.request("GET", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
+                conn.request("GET", href.encode("utf-8"), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception, e:
                 err(e)
@@ -276,7 +276,7 @@ class Config(object):
                 localpath = _(localpath)
 
                 conn = self.getConnection()
-                conn.request("GET", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
+                conn.request("GET", href.encode("utf-8"), "", self.getHeaders())
                 responce = conn.getresponse()
                 with open(localpath, u"w") as f:
                     while True:
@@ -299,7 +299,7 @@ class Config(object):
             try:
                 href = remote(href)
                 conn = self.getConnection()
-                conn.request("DELETE", href.encode("utf-8", errors=u'ignore'), "", self.getHeaders())
+                conn.request("DELETE", href.encode("utf-8"), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception, e:
                 err(e)
@@ -331,8 +331,8 @@ class Config(object):
                     "Content-Length": length,
                     "Expect": "100-continue"
                 })
-                with open(localpath.encode("utf-8", errors=u'ignore'), u"r") as f:
-                    href = href.encode("utf-8", errors=u'ignore')
+                with open(localpath.encode("utf-8"), u"r") as f:
+                    href = href.encode("utf-8")
                     href = urllib.quote(href)
                     conn.request("PUT", href, f, headers)
                     response = conn.getresponse()
