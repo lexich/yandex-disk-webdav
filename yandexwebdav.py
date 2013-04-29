@@ -7,7 +7,10 @@ import os
 import traceback
 import urllib
 import threading
+import logging
 from Queue import Queue, Empty
+
+logger = logging.getLogger("yandexwebdav.py")
 
 TRYINGS = 3
 
@@ -108,7 +111,7 @@ def apply_async(name, func, params_list, limit=5):
 
 
 class Config(object):
-    def __init__(self, opts, log=None, err=None):
+    def __init__(self, opts):
         """
         Constructor
         :param opts: dictionary of property
@@ -119,16 +122,8 @@ class Config(object):
         self.host = opts.get(u"host", u"webdav.yandex.ru").encode(u"utf-8")
         self.options = opts
         self.limit = opts.get(u"limit", 4)
-        self.log = log if log else lambda *args: self._log(args)
-        self.err = err if err else lambda *args: self._err(args)
 
-    def _log(self, *args):
-        print args
 
-    def _err(self, *args):
-        self.log(*args)
-        for txt in traceback.format_stack():
-            self.log(txt)
 
     def getHeaders(self):
         """
@@ -155,7 +150,7 @@ class Config(object):
         :return: list(folders, files) and list(None,None) if folder doesn't exist
         """
         for iTry in range(TRYINGS):
-            self.log(u"list(%s): %s" % (iTry, href))
+            logger.info(u"list(%s): %s" % (iTry, href))
             try:
                 href = os.path.join(u"/", _(href))
                 conn = self.getConnection()
@@ -179,7 +174,8 @@ class Config(object):
                             files[response.href] = response
                 return folders, files
             except Exception, e:
-                self.err(e)
+                logger.exception()
+                logger.exception(e)
 
     def sync(self, localpath, href, exclude=None, block=True):
         """
@@ -189,7 +185,7 @@ class Config(object):
         :param exclude: filter folder which need to exlude
         :return: respose
         """
-        self.log(u"sync: %s %s" % (localpath, href))
+        logger.info(u"sync: %s %s" % (localpath, href))
         try:
             localpath = _(localpath)
             href = remote(href)
@@ -200,10 +196,15 @@ class Config(object):
                 remoteFolders = {}
                 self.mkdir(href)
 
+            def norm(folder):
+                path = os.path.join(href, _(folder))
+                if path[len(path)-1] != os.path.sep:
+                    path += u"/"
+                return path
+
             foldersToCreate = filter(
                 lambda folderPath: folderPath not in remoteFolders,
-                map(lambda folder: os.path.join(href, _(folder)) + u"/",
-                    localFolders)
+                map(norm, localFolders)
             )
             apply_async("mkdir", lambda path: self.mkdir(path), foldersToCreate, self.limit)
 
@@ -229,7 +230,7 @@ class Config(object):
                         [(localFolderPath, remoteFolderPath), ]
                     )
         except Exception, e:
-            self.err(e)
+            logger.exception(e)
         if block:
             qWork.join()
 
@@ -240,14 +241,14 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            self.log(u"mkdir(%s): %s" % (iTry, href))
+            logger.info(u"mkdir(%s): %s" % (iTry, href))
             try:
                 href = remote(href)
                 con = self.getConnection()
                 con.request("MKCOL", href.encode("utf-8"), "", self.getHeaders())
                 return con.getresponse().read()
             except Exception, e:
-                self.err(e)
+                logger.exception(e)
 
     def download(self, href):
         """
@@ -257,13 +258,13 @@ class Config(object):
         """
         for iTry in range(TRYINGS):
             try:
-                self.log(u"download(%s): %s" % (iTry, href))
+                logger.info(u"download(%s): %s" % (iTry, href))
                 href = remote(href)
                 conn = self.getConnection()
                 conn.request("GET", href.encode("utf-8"), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception, e:
-                self.err(e)
+                logger.exception(e)
 
     def downloadTo(self, href, localpath):
         """
@@ -273,7 +274,7 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            self.log(u"downloadTo(%s): %s %s" % (iTry, href, localpath))
+            logger.info(u"downloadTo(%s): %s %s" % (iTry, href, localpath))
             try:
                 href = remote(href)
                 localpath = _(localpath)
@@ -289,7 +290,7 @@ class Config(object):
                         f.write(data)
                 return True
             except Exception, e:
-                self.err(e)
+                logger.exception(e)
 
     def delete(self, href):
         """
@@ -298,14 +299,14 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            self.log(u"delete(%s): %s" % (iTry, href))
+            logger.info(u"delete(%s): %s" % (iTry, href))
             try:
                 href = remote(href)
                 conn = self.getConnection()
                 conn.request("DELETE", href.encode("utf-8"), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception, e:
-                self.err(e)
+                logger.exception(e)
 
     def upload(self, localpath, href):
         """
@@ -317,13 +318,13 @@ class Config(object):
         localpath = _(localpath)
         href = remote(href)
         if not os.path.exists(localpath):
-            self.log(u"ERROR: localfile: %s not found" % localpath)
+            logger.info(u"ERROR: localfile: %s not found" % localpath)
             return
         if os.path.islink(localpath):
             return self.upload(os.path.abspath(os.path.realpath(localpath)), href)
             # 3 tryings to upload file
         for iTry in range(TRYINGS):
-            self.log(u"upload(%s): %s %s" % (iTry, localpath, href))
+            logger.info(u"upload(%s): %s %s" % (iTry, localpath, href))
             try:
                 href = os.path.join(u"/", href)
                 conn = self.getConnection()
@@ -341,7 +342,7 @@ class Config(object):
                     response = conn.getresponse()
                     return response.read()
             except Exception, e:
-                self.err(e)
+                logger.exception(e)
 
 
 if __name__ == "__main__":
