@@ -29,6 +29,8 @@ def _(path):
 def remote(href):
     href = _(href)
     href = os.path.join(u"/", href)
+    if os.sep == u"\\":
+        href = href.replace(u"\\","/")
     return href
 
 
@@ -236,7 +238,7 @@ class Config(object):
 
     def mkdir(self, href):
         """
-        make remote folder
+        create remote folder
         :param href: remote path
         :return: response
         """
