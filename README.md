@@ -62,6 +62,10 @@ Or manual way
 >   -r REMOTE, --remote=REMOTE  remote path
 
 ## Example
+
+After first execution is appearead interactive configurator. You need to input your yandex name {username}@{ya.ru|yandex.ru}
+password, host {webdaw.yandex.ru} and limit of threads, which used in parralel folder's sync.
+
 ###List remote dir
 > $ ydw.py --list -r //
 
