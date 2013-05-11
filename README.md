@@ -65,6 +65,7 @@ Or manual way
 
 After first execution is appearead interactive configurator. You need to input your yandex name {username}@{ya.ru|yandex.ru}
 password, host {webdaw.yandex.ru} and limit of threads, which used in parralel folder's sync.
+Config saves in ~/.yandexwebdavconf
 
 ###List remote dir
 > $ ydw.py --list -r //
