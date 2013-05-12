@@ -1,32 +1,67 @@
 #!/usr/bin/python
 # coding=utf-8
-import httplib
-import base64
-import xml.dom.minidom
 import os
+import sys
 import traceback
 import urllib
 import threading
 import logging
-from Queue import Queue, Empty
+import base64
+import xml.dom.minidom
 
+try:
+    import httplib
+except ImportError:
+    import http.client as httplib
+
+try:
+    from Queue import Queue, Empty
+except ImportError:
+    from queue import Queue, Empty
+  
 logger = logging.getLogger("yandexwebdav.py")
 
 TRYINGS = 3
 
 
 def _(path):
+    """
+    Normalize path to unicode
+    :param path: path
+    :return: normalize path
+
+    >>> _(None)
+    u''
+    >>> _(u"test1")
+    u'test1'
+    >>> _("test2")
+    u'test2'
+    """
     if path is None:
         return u""
     elif type(path) == unicode:
         return path
     try:
         return path.decode(u"UTF-8")
-    except UnicodeDecodeError, e:
+    except UnicodeDecodeError:
         return path
 
 
 def remote(href):
+    """
+    Normalize remote href
+    :param href: remote path
+    :return: normalize href
+
+    >>> remote("/test/hello.txt")
+    u'/test/hello.txt'
+    >>> remote("test/hello.txt")
+    u'/test/hello.txt'
+    >>> remote("test\hello.txt")
+    u'/test/hello.txt'
+    >>> remote(None)
+    u'/'
+    """
     href = _(href)
     href = os.path.join(u"/", href)
     if os.sep == u"\\":
@@ -85,9 +120,10 @@ def __call():
             name, func, args = qWork.get()
             func(*args)
             qWork.task_done()
-        except Empty, e:
+        except Empty:
             pass
-        except Exception, e:
+        except Exception:
+            e = sys.exc_info()[1]
             print("Exception: {0} {1}".format(name, e))
 
 
@@ -175,8 +211,8 @@ class Config(object):
                         else:
                             files[response.href] = response
                 return folders, files
-            except Exception, e:
-                logger.exception()
+            except Exception:
+                e = sys.exc_info()[1]
                 logger.exception(e)
 
     def sync(self, localpath, href, exclude=None, block=True):
@@ -231,7 +267,8 @@ class Config(object):
                         lambda localpath, href: self.sync(localpath, href, exclude, False),
                         [(localFolderPath, remoteFolderPath), ]
                     )
-        except Exception, e:
+        except Exception:
+            e = sys.exc_info()[1]
             logger.exception(e)
         if block:
             qWork.join()
@@ -249,7 +286,8 @@ class Config(object):
                 con = self.getConnection()
                 con.request("MKCOL", href.encode("utf-8"), "", self.getHeaders())
                 return con.getresponse().read()
-            except Exception, e:
+            except Exception:
+                e = sys.exc_info()[1]
                 logger.exception(e)
 
     def download(self, href):
@@ -265,7 +303,8 @@ class Config(object):
                 conn = self.getConnection()
                 conn.request("GET", href.encode("utf-8"), "", self.getHeaders())
                 return conn.getresponse().read()
-            except Exception, e:
+            except Exception:
+                e = sys.exc_info()[1]
                 logger.exception(e)
 
     def downloadTo(self, href, localpath):
@@ -291,7 +330,8 @@ class Config(object):
                             break
                         f.write(data)
                 return True
-            except Exception, e:
+            except Exception:
+                e = sys.exc_info()[1]
                 logger.exception(e)
 
     def delete(self, href):
@@ -307,7 +347,8 @@ class Config(object):
                 conn = self.getConnection()
                 conn.request("DELETE", href.encode("utf-8"), "", self.getHeaders())
                 return conn.getresponse().read()
-            except Exception, e:
+            except Exception:
+                e = sys.exc_info()[1]
                 logger.exception(e)
 
     def upload(self, localpath, href):
@@ -343,7 +384,8 @@ class Config(object):
                     conn.request("PUT", href, f, headers)
                     response = conn.getresponse()
                     return response.read()
-            except Exception, e:
+            except Exception:
+                e = sys.exc_info()[1]
                 logger.exception(e)
 
 
