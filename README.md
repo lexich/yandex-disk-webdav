@@ -1,7 +1,8 @@
 yandex-disk-webdav
 ==================
 
-Simple wrapper to work with yandex disk using webdav Basic Auth
+Simple wrapper to work with yandex disk using webdav Basic Auth. 
+Compatible python 2.6, 2.7, 3
 
 # Install
 
