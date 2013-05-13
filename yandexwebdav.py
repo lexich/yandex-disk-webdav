@@ -214,16 +214,20 @@ class Config(object):
                 elif data == 'You are not authorized to see this!':
                     return None, None
                 else:
-                    dom = xml.dom.minidom.parseString(data)
-                    responces = dom.getElementsByTagNameNS("DAV:", "response")
-                    folders = {}
-                    files = {}
-                    for dom in responces:
-                        response = RemoteObject(dom, self, href)
-                        if response.isFolder() and response.href != href:
-                            folders[response.href] = response
-                        else:
-                            files[response.href] = response
+                    try:
+                        dom = xml.dom.minidom.parseString(data)
+                        responces = dom.getElementsByTagNameNS("DAV:", "response")
+                        folders = {}
+                        files = {}
+                        for dom in responces:
+                            response = RemoteObject(dom, self, href)
+                            if response.isFolder() and response.href != href:
+                                folders[response.href] = response
+                            else:
+                                files[response.href] = response
+                    except xml.parsers.expat.ExpatError:
+                        e = sys.exc_info()[1]
+                        logger.exception(e)
                 return folders, files
             except Exception:
                 e = sys.exc_info()[1]
@@ -339,7 +343,7 @@ class Config(object):
                 responce = conn.getresponse()
                 with open(localpath, u("w")) as f:
                     while True:
-                        data = responce.read(1024)
+                        data = _decode_utf8(responce.read(1024))
                         if not data:
                             break
                         f.write(data)
