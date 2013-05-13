@@ -203,16 +203,18 @@ class Config(object):
         """
         for iTry in range(TRYINGS):
             logger.info(u("list(%s): %s") % (iTry, href))
+            folders = None
+            files = None
             try:
                 href = os.path.join(u("/"), _(href))
                 conn = self.getConnection()
                 conn.request("PROPFIND", _encode_utf8(href), u(""), self.getHeaders())
                 response = conn.getresponse()
                 data = response.read()
-                if data == 'list: folder was not found':
-                    return None, None
-                elif data == 'You are not authorized to see this!':
-                    return None, None
+                if data == b('list: folder was not found'):
+                    return folders, files
+                elif data == b('You are not authorized to see this!'):
+                    return folders, files
                 else:
                     try:
                         dom = xml.dom.minidom.parseString(data)
@@ -221,10 +223,11 @@ class Config(object):
                         files = {}
                         for dom in responces:
                             response = RemoteObject(dom, self, href)
-                            if response.isFolder() and response.href != href:
-                                folders[response.href] = response
-                            else:
-                                files[response.href] = response
+                            if response.href != href:
+                                if response.isFolder():
+                                    folders[response.href] = response
+                                else:
+                                    files[response.href] = response
                     except xml.parsers.expat.ExpatError:
                         e = sys.exc_info()[1]
                         logger.exception(e)
@@ -320,7 +323,11 @@ class Config(object):
                 href = remote(href)
                 conn = self.getConnection()
                 conn.request("GET", _encode_utf8(href), "", self.getHeaders())
-                return conn.getresponse().read()
+                data = conn.getresponse().read()
+                if data == b('resource not found'):
+                    return b("")
+                else:
+                    return data
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
@@ -344,7 +351,7 @@ class Config(object):
                 with open(localpath, u("w")) as f:
                     while True:
                         data = _decode_utf8(responce.read(1024))
-                        if not data:
+                        if not data or data == b('resource not found'):
                             break
                         f.write(data)
                 return True

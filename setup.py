@@ -1,9 +1,9 @@
 #-*- coding: utf-8 -*-
 from setuptools import setup, find_packages
-
+README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
 setup(
     name='yandexwebdav',
-    version='0.2.2',
+    version='0.2.3',
     include_package_data=True,
     py_modules=['yandexwebdav'],
     url='https://github.com/lexich/yandex-disk-webdav',
@@ -11,7 +11,7 @@ setup(
     author='lexich',
     author_email='lexich121@gmail.com',
     description='Simple wrapper to work with yandex disk using webdav Basic Auth',
-    long_description="Simple wrapper to work with yandex disk using webdav Basic Auth",
+    long_description=README,
     install_requires=[
         "simplejson","six"
     ],

@@ -52,6 +52,17 @@ class TestAPI(unittest.TestCase):
         folders, files = self.conf.list("/")
         self.assertFalse(name in folders.keys())
 
+    def test_fakedownloadTo(self):
+        filename = "/fakedowload%0.4f.txt" % random()
+
+        localfile = os.path.join(tempfile.gettempdir(), filename)
+        folders, files = self.conf.list("/")
+        self.assertFalse(filename in files.keys())
+        data = self.conf.download(filename)
+        self.assertEqual(data,b(""))
+        self.conf.downloadTo(filename, localfile)
+        self.assertFalse(os.path.exists(localfile))
+
 
 TMPNAME = "_test_%s" % random()
 
@@ -77,8 +88,10 @@ class TestSyncUpload(unittest.TestCase):
     def tearDown(self):
         os.remove(self.file1)
         os.remove(self.file2)
-        os.rmdir(self.folder1)
-        os.rmdir(self.tmppath)
+        if os.path.exists(self.folder1):
+            os.rmdir(self.folder1)
+        if os.path.exists(self.tmppath):
+            os.rmdir(self.tmppath)
 
     def test_upload_download_downloadTo_deletefile(self):
         filename = "/test_%0.4f.txt" % random()
@@ -99,7 +112,7 @@ class TestSyncUpload(unittest.TestCase):
 
         with open(downloadTo, "r") as f:
             data = f.read()
-        self.assertEqual(data, b("file1"))
+        self.assertEqual(data, "file1")
         os.remove(downloadTo)
 
         self.conf.delete(filename)
