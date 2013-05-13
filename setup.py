@@ -1,5 +1,6 @@
 #-*- coding: utf-8 -*-
 from setuptools import setup, find_packages
+import os
 README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
 setup(
     name='yandexwebdav',
