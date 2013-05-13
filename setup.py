@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='yandexwebdav',
-    version='0.2.0',
+    version='0.2.1',
     include_package_data=True,
     py_modules=['yandexwebdav'],
     url='https://github.com/lexich/yandex-disk-webdav',
@@ -13,7 +13,7 @@ setup(
     description='Simple wrapper to work with yandex disk using webdav Basic Auth',
     long_description="Simple wrapper to work with yandex disk using webdav Basic Auth",
     install_requires=[
-        "simplejson"
+        "simplejson","six"
     ],
     scripts=[
         "ydw.py"

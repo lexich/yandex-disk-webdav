@@ -3,13 +3,29 @@ import sys
 
 __author__ = 'lexich'
 import os
+
 import logging
 import getpass
 from optparse import OptionParser
 import yandexwebdav
-import simplejson
+
+from six import u
+from six import PY3
+from six.moves import input
+
+if PY3:
+    import json
+else:
+    import simplejson as json
 
 logger = logging.getLogger(__name__)
+
+
+def _encode_utf8(txt):
+    if not PY3:
+        if type(txt) == unicode:
+            return txt.encode("utf-8")
+    return txt
 
 
 class Config(object):
@@ -31,23 +47,23 @@ class Config(object):
 
     def readConfig(self, path):
         with open(path, "r") as f:
-            return simplejson.load(f)
+            return json.load(f)
 
     def createConfig(self, path):
         opt = dict()
 
-        opt["user"] = raw_input(u"Input username: ").encode("utf-8")
-        opt["password"] = getpass.getpass(prompt="Input password: ", stream=sys.stderr).encode("utf-8")
-        opt["host"] = u"webdav.yandex.ru"
+        opt["user"] = _encode_utf8(input(u("Input username: ")))
+        opt["password"] = _encode_utf8(getpass.getpass(prompt="Input password: ", stream=sys.stderr))
+        opt["host"] = u("webdav.yandex.ru")
         opt["limit"] = 4
-        host = raw_input(u"Input host defaultp[%s]: " % opt["host"]).encode("utf-8")
+        host = _encode_utf8(input(u("Input host defaultp[%s]: ") % opt["host"]))
         if host != "":
             opt["host"] = host
         try:
-            opt["limit"] = int(raw_input(u"Input thread limit default[%i]: " % opt["limit"]))
+            opt["limit"] = int(input(u("Input thread limit default[%i]: ") % opt["limit"]))
         except ValueError:
             pass
-        data = simplejson.dumps(opt, indent=4, separators=(',', ': '))
+        data = json.dumps(opt, indent=4, separators=(',', ': '))
         with open(path, "w") as f:
             f.write(data)
         return opt
@@ -91,26 +107,26 @@ def main():
         return opt.local
 
     if opt.list:
-        logger.info(u"list %s" % remote())
+        logger.info("list %s" % remote())
         res = conf.list(remote())
         for folder in res[0].keys():
-            print(u"Folder: %s" % folder)
+            print("Folder: %s" % folder)
         for filename in res[1].keys():
-            print(u"File: %s" % filename)
+            print("File: %s" % filename)
     elif opt.sync:
-        logger.info(u"sync %s" % remote())
+        logger.info("sync %s" % remote())
         conf.sync(local(), remote())
     elif opt.mkdir:
-        logger.info(u"mkdir %s" % remote())
+        logger.info("mkdir %s" % remote())
         conf.mkdir(remote())
     elif opt.download:
-        logger.info(u"download %s %s" % (local(), remote()))
+        logger.info("download %s %s" % (local(), remote()))
         conf.downloadTo(remote(), local())
     elif opt.delete:
-        logger.info(u"delete %s" % remote())
+        logger.info("delete %s" % remote())
         conf.delete(remote())
     elif opt.upload:
-        logger.info(u"upload %s %s" % (local(), remote()))
+        logger.info("upload %s %s" % (local(), remote()))
         conf.upload(local(), remote())
 
 

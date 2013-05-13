@@ -1,27 +1,39 @@
 #!/usr/bin/python
 # coding=utf-8
+
 import os
 import sys
-import traceback
-import urllib
 import threading
 import logging
 import base64
 import xml.dom.minidom
 
-try:
-    import httplib
-except ImportError:
-    import http.client as httplib
+from six.moves import queue
+from six.moves import http_client
+from six import u, b, PY3
 
-try:
-    from Queue import Queue, Empty
-except ImportError:
-    from queue import Queue, Empty
-  
+if PY3:
+    from urllib.parse import unquote, quote
+else:
+    from urllib import unquote, quote
+
 logger = logging.getLogger("yandexwebdav.py")
 
 TRYINGS = 3
+
+
+def _encode_utf8(txt):
+    if not PY3:
+        if type(txt) == unicode:
+            return txt.encode("utf-8")
+    return txt
+
+
+def _decode_utf8(txt):
+    if PY3:
+        if type(txt) is str:
+            return txt
+    return txt.decode("utf-8")
 
 
 def _(path):
@@ -32,19 +44,21 @@ def _(path):
 
     >>> _(None)
     u''
-    >>> _(u"test1")
+    >>> _(u("test1"))
     u'test1'
     >>> _("test2")
     u'test2'
     """
     if path is None:
-        return u""
-    elif type(path) == unicode:
-        return path
-    try:
-        return path.decode(u"UTF-8")
-    except UnicodeDecodeError:
-        return path
+        return u("")
+    if not PY3:
+        if type(path) == unicode:
+            return path
+        try:
+            return _decode_utf8(path)
+        except UnicodeDecodeError:
+            pass
+    return path
 
 
 def remote(href):
@@ -63,9 +77,9 @@ def remote(href):
     u'/'
     """
     href = _(href)
-    href = os.path.join(u"/", href)
-    if os.sep == u"\\":
-        href = href.replace(u"\\","/")
+    href = os.path.join(u("/"), href)
+    if os.sep == "\\":
+        href = href.replace("\\", "/")
     return href
 
 
@@ -74,20 +88,20 @@ class RemoteObject(object):
         self._dom = dom
         self._config = config
         self.root = root
-        href = self._getEl(u"href")
-        if type(href) == unicode:
-            href = href.encode("utf-8")
-        self.href = urllib.unquote(href).decode("utf-8")
-        self.length = self._getEl(u"getcontentlength")
-        self.name = self._getEl(u"displayname")
-        self.creationdate = self._getEl(u"creationdate")
+        href = self._getEl("href")
+
+        href = _encode_utf8(href)
+        self.href = _decode_utf8(unquote(href))
+        self.length = self._getEl("getcontentlength")
+        self.name = self._getEl("displayname")
+        self.creationdate = self._getEl("creationdate")
 
     def _getEl(self, name):
-        els = self._dom.getElementsByTagNameNS(u"DAV:", name)
+        els = self._dom.getElementsByTagNameNS("DAV:", name)
         return els[0].firstChild.nodeValue if len(els) > 0 else ""
 
     def isFolder(self):
-        els = self._dom.getElementsByTagNameNS(u"DAV:", u"collection")
+        els = self._dom.getElementsByTagNameNS("DAV:", "collection")
         return len(els) > 0
 
     def download(self):
@@ -111,7 +125,7 @@ class RemoteObject(object):
         return self.href
 
 
-qWork = Queue()
+qWork = queue.Queue()
 
 
 def __call():
@@ -120,7 +134,7 @@ def __call():
             name, func, args = qWork.get()
             func(*args)
             qWork.task_done()
-        except Empty:
+        except queue.Empty:
             pass
         except Exception:
             e = sys.exc_info()[1]
@@ -155,12 +169,11 @@ class Config(object):
         :param opts: dictionary of property
         :return: self
         """
-        self.user = opts.get(u"user", u"").encode(u"utf-8")
-        self.password = opts.get(u"password", u"").encode(u"utf-8")
-        self.host = opts.get(u"host", u"webdav.yandex.ru").encode(u"utf-8")
+        self.user = _encode_utf8(opts.get("user", ""))
+        self.password = _encode_utf8(opts.get("password", ""))
+        self.host = _encode_utf8(opts.get("host", "webdav.yandex.ru"))
         self.options = opts
-        self.limit = opts.get(u"limit", 4)
-
+        self.limit = opts.get("limit", 4)
 
 
     def getHeaders(self):
@@ -168,18 +181,19 @@ class Config(object):
         Get common headers
         :return:
         """
+        basicauth = base64.encodestring(b(self.user + ':' + self.password)).strip()
         return {
             "Depth": "1",
-            "Authorization": 'Basic ' + base64.encodestring(self.user + ':' + self.password).strip(),
+            "Authorization": 'Basic ' + _decode_utf8(basicauth),
             "Accept": "*/*"
         }
 
     def getConnection(self):
         """
         Get connection
-        :return: connection httplib.HTTPSConnection
+        :return: connection http_client.HTTPSConnection
         """
-        return httplib.HTTPSConnection(self.host)
+        return http_client.HTTPSConnection(self.host)
 
     def list(self, href):
         """
@@ -188,11 +202,11 @@ class Config(object):
         :return: list(folders, files) and list(None,None) if folder doesn't exist
         """
         for iTry in range(TRYINGS):
-            logger.info(u"list(%s): %s" % (iTry, href))
+            logger.info(u("list(%s): %s") % (iTry, href))
             try:
-                href = os.path.join(u"/", _(href))
+                href = os.path.join(u("/"), _(href))
                 conn = self.getConnection()
-                conn.request("PROPFIND", href.encode("utf-8"), u"", self.getHeaders())
+                conn.request("PROPFIND", _encode_utf8(href), u(""), self.getHeaders())
                 response = conn.getresponse()
                 data = response.read()
                 if data == 'list: folder was not found':
@@ -201,7 +215,7 @@ class Config(object):
                     return None, None
                 else:
                     dom = xml.dom.minidom.parseString(data)
-                    responces = dom.getElementsByTagNameNS(u"DAV:", u"response")
+                    responces = dom.getElementsByTagNameNS("DAV:", "response")
                     folders = {}
                     files = {}
                     for dom in responces:
@@ -223,11 +237,11 @@ class Config(object):
         :param exclude: filter folder which need to exlude
         :return: respose
         """
-        logger.info(u"sync: %s %s" % (localpath, href))
+        logger.info(u("sync: %s %s") % (localpath, href))
         try:
             localpath = _(localpath)
             href = remote(href)
-            localRoot, localFolders, localFiles = os.walk(localpath).next()
+            localRoot, localFolders, localFiles = next(os.walk(localpath))
             remoteFolders, remoteFiles = self.list(href)
             if remoteFiles is None or remoteFolders is None:
                 remoteFiles = {}
@@ -236,8 +250,8 @@ class Config(object):
 
             def norm(folder):
                 path = os.path.join(href, _(folder))
-                if path[len(path)-1] != os.path.sep:
-                    path += u"/"
+                if path[len(path) - 1] != os.path.sep:
+                    path += u("/")
                 return path
 
             foldersToCreate = filter(
@@ -280,11 +294,11 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            logger.info(u"mkdir(%s): %s" % (iTry, href))
+            logger.info(u("mkdir(%s): %s") % (iTry, href))
             try:
                 href = remote(href)
                 con = self.getConnection()
-                con.request("MKCOL", href.encode("utf-8"), "", self.getHeaders())
+                con.request("MKCOL", _encode_utf8(href), "", self.getHeaders())
                 return con.getresponse().read()
             except Exception:
                 e = sys.exc_info()[1]
@@ -298,10 +312,10 @@ class Config(object):
         """
         for iTry in range(TRYINGS):
             try:
-                logger.info(u"download(%s): %s" % (iTry, href))
+                logger.info(u("download(%s): %s") % (iTry, href))
                 href = remote(href)
                 conn = self.getConnection()
-                conn.request("GET", href.encode("utf-8"), "", self.getHeaders())
+                conn.request("GET", _encode_utf8(href), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception:
                 e = sys.exc_info()[1]
@@ -315,15 +329,15 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            logger.info(u"downloadTo(%s): %s %s" % (iTry, href, localpath))
+            logger.info(u("downloadTo(%s): %s %s") % (iTry, href, localpath))
             try:
                 href = remote(href)
                 localpath = _(localpath)
 
                 conn = self.getConnection()
-                conn.request("GET", href.encode("utf-8"), "", self.getHeaders())
+                conn.request("GET", _encode_utf8(href), "", self.getHeaders())
                 responce = conn.getresponse()
-                with open(localpath, u"w") as f:
+                with open(localpath, u("w")) as f:
                     while True:
                         data = responce.read(1024)
                         if not data:
@@ -341,11 +355,11 @@ class Config(object):
         :return: response
         """
         for iTry in range(TRYINGS):
-            logger.info(u"delete(%s): %s" % (iTry, href))
+            logger.info(u("delete(%s): %s") % (iTry, href))
             try:
                 href = remote(href)
                 conn = self.getConnection()
-                conn.request("DELETE", href.encode("utf-8"), "", self.getHeaders())
+                conn.request("DELETE", _encode_utf8(href), "", self.getHeaders())
                 return conn.getresponse().read()
             except Exception:
                 e = sys.exc_info()[1]
@@ -361,15 +375,15 @@ class Config(object):
         localpath = _(localpath)
         href = remote(href)
         if not os.path.exists(localpath):
-            logger.info(u"ERROR: localfile: %s not found" % localpath)
+            logger.info(u("ERROR: localfile: %s not found") % localpath)
             return
         if os.path.islink(localpath):
             return self.upload(os.path.abspath(os.path.realpath(localpath)), href)
             # 3 tryings to upload file
         for iTry in range(TRYINGS):
-            logger.info(u"upload(%s): %s %s" % (iTry, localpath, href))
+            logger.info(u("upload(%s): %s %s") % (iTry, localpath, href))
             try:
-                href = os.path.join(u"/", href)
+                href = os.path.join(u("/"), href)
                 conn = self.getConnection()
                 headers = self.getHeaders()
                 length = os.path.getsize(localpath)
@@ -378,9 +392,13 @@ class Config(object):
                     "Content-Length": length,
                     "Expect": "100-continue"
                 })
-                with open(localpath.encode("utf-8"), u"r") as f:
-                    href = href.encode("utf-8")
-                    href = urllib.quote(href)
+                if PY3:
+                    _open = open(_encode_utf8(localpath), "r", encoding='latin-1')
+                else:
+                    _open = open(_encode_utf8(localpath), "r")
+                with _open as f:
+                    href = _encode_utf8(href)
+                    href = quote(href)
                     conn.request("PUT", href, f, headers)
                     response = conn.getresponse()
                     return response.read()
