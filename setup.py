@@ -1,10 +1,10 @@
 #-*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 import os
-README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
+README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 setup(
     name='yandexwebdav',
-    version='0.2.3',
+    version='0.2.4',
     include_package_data=True,
     py_modules=['yandexwebdav'],
     url='https://github.com/lexich/yandex-disk-webdav',
