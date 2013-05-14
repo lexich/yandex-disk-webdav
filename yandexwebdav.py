@@ -347,13 +347,21 @@ class Config(object):
 
                 conn = self.getConnection()
                 conn.request("GET", _encode_utf8(href), "", self.getHeaders())
-                responce = conn.getresponse()
-                with open(localpath, u("w")) as f:
+                response = conn.getresponse()
+                f = None
+                try:
                     while True:
-                        data = _decode_utf8(responce.read(1024))
-                        if not data or data == b('resource not found'):
+                        data = _decode_utf8(response.read(1024))
+                        if not data:
                             break
+                        if data == u('resource not found'):
+                            return False
+                        if not f:
+                            f = open(localpath, "w")
                         f.write(data)
+                finally:
+                    if f:
+                        f.close()
                 return True
             except Exception:
                 e = sys.exc_info()[1]

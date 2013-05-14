@@ -53,14 +53,15 @@ class TestAPI(unittest.TestCase):
         self.assertFalse(name in folders.keys())
 
     def test_fakedownloadTo(self):
-        filename = "/fakedowload%0.4f.txt" % random()
+        filename = "fakedowload%0.4f.txt" % random()
+        filenamePath = "/%s" % filename
 
         localfile = os.path.join(tempfile.gettempdir(), filename)
         folders, files = self.conf.list("/")
-        self.assertFalse(filename in files.keys())
-        data = self.conf.download(filename)
-        self.assertEqual(data,b(""))
-        self.conf.downloadTo(filename, localfile)
+        self.assertFalse(filenamePath in files.keys())
+        data = self.conf.download(filenamePath)
+        self.assertEqual(data, b(""))
+        self.assertFalse(self.conf.downloadTo(filenamePath, localfile))
         self.assertFalse(os.path.exists(localfile))
 
 
