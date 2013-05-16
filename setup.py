@@ -14,7 +14,7 @@ setup(
     description='Simple wrapper to work with yandex disk using webdav Basic Auth',
     long_description=README,
     install_requires=[
-        "simplejson","six"
+      "simplejson","six"
     ],
     scripts=[
         "ydw.py"
