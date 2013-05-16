@@ -121,6 +121,36 @@ class TestSyncUpload(unittest.TestCase):
         folders, files = self.conf.list("/")
         self.assertFalse(filename in files.keys())
 
+    def test_write_download_delete(self):
+        filename = "/test_%0.4f.txt" % random()
+        folders, files = self.conf.list("/")
+        self.assertFalse(filename in files.keys())
+
+        with open(self.file1, "r") as f:
+            self.conf.write(f, filename)
+
+        folders, files = self.conf.list("/")
+        self.assertTrue(filename in files.keys())
+
+        data = self.conf.download(filename)
+        self.assertEqual(data, b("file1"))
+
+        downloadTo = os.path.join(self.tmppath, "download.txt")
+        self.conf.downloadTo(filename, downloadTo)
+
+        self.assertTrue(os.path.exists(downloadTo))
+
+        with open(downloadTo, "r") as f:
+            data = f.read()
+        self.assertEqual(data, "file1")
+        os.remove(downloadTo)
+
+        self.conf.delete(filename)
+
+        folders, files = self.conf.list("/")
+        self.assertFalse(filename in files.keys())
+
+
     def test_sync_delete(self):
         folders, files = self.conf.list("/")
         self.assertFalse(self.remotedir in folders.keys())

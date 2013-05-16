@@ -384,6 +384,25 @@ class Config(object):
                 e = sys.exc_info()[1]
                 logger.exception(e)
 
+    def write(self, f, href, length=None):
+        logger.info(u("write: %s") % href)
+        href = remote(href)
+        href = os.path.join(u("/"), href)
+        conn = self.getConnection()
+        headers = self.getHeaders()
+        headers.update({
+            "Content-Type": "application/binary",
+            "Expect": "100-continue"
+        })
+        if length:
+            headers["Content-Length"] = length
+        href = _encode_utf8(href)
+        href = quote(href)
+        conn.request("PUT", href, f, headers)
+        response = conn.getresponse()
+        data = response.read()
+        return data
+
     def upload(self, localpath, href):
         """
         Upload file from localpath to remote server
@@ -400,27 +419,16 @@ class Config(object):
             return self.upload(os.path.abspath(os.path.realpath(localpath)), href)
             # 3 tryings to upload file
         for iTry in range(TRYINGS):
-            logger.info(u("upload(%s): %s %s") % (iTry, localpath, href))
             try:
-                href = os.path.join(u("/"), href)
-                conn = self.getConnection()
-                headers = self.getHeaders()
+                logger.info(u("upload: %s %s") % (localpath, href))
                 length = os.path.getsize(localpath)
-                headers.update({
-                    "Content-Type": "application/binary",
-                    "Content-Length": length,
-                    "Expect": "100-continue"
-                })
+
                 if PY3:
                     _open = open(_encode_utf8(localpath), "r", encoding='latin-1')
                 else:
                     _open = open(_encode_utf8(localpath), "r")
                 with _open as f:
-                    href = _encode_utf8(href)
-                    href = quote(href)
-                    conn.request("PUT", href, f, headers)
-                    response = conn.getresponse()
-                    return response.read()
+                    return self.write(f, href, length=length)
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
