@@ -4,11 +4,11 @@ import os
 README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 setup(
     name='yandexwebdav',
-    version='0.2.6',
+    version='0.2.7',
     include_package_data=True,
     py_modules=['yandexwebdav'],
     url='https://github.com/lexich/yandex-disk-webdav',
-    license='BSD',
+    license='MIT',
     author='lexich',
     author_email='lexich121@gmail.com',
     description='Simple wrapper to work with yandex disk using webdav Basic Auth',
