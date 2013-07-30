@@ -162,17 +162,18 @@ def apply_async(name, func, params_list, limit=5):
         th.start()
 
 
-class NotAuthException(Exception):
+class ConnectionException(Exception):
     """docstring for NotAuthException"""
 
     def __init__(self, code, msg=""):
         strError = _("Not Authorization status code: {0}\n{1}").format(code, msg)
-        super(NotAuthException, self).__init__(strError)
+        self.code = code
+        super(ConnectionException, self).__init__(strError)
 
 
 def checkResponse(response, msg=""):
-    if response.status != 207:
-        raise NotAuthException(response.status, msg)
+    if response.status not in [200, 201, 207]:
+        raise ConnectionException(response.status, msg)
 
 
 class Config(object):
@@ -245,7 +246,7 @@ class Config(object):
                         e = sys.exc_info()[1]
                         logger.exception(e)
                 return folders, files
-            except NotAuthException:
+            except ConnectionException:
                 raise
             except Exception:
                 e = sys.exc_info()[1]
@@ -304,7 +305,7 @@ class Config(object):
                         lambda localpath, href: self.sync(localpath, href, exclude, False),
                         [(localFolderPath, remoteFolderPath), ]
                     )
-        except NotAuthException:
+        except ConnectionException:
             raise
         except Exception:
             e = sys.exc_info()[1]
@@ -327,7 +328,7 @@ class Config(object):
                 response = con.getresponse()
                 checkResponse(response)
                 return response.read()
-            except NotAuthException:
+            except ConnectionException:
                 raise
             except Exception:
                 e = sys.exc_info()[1]
@@ -346,13 +347,13 @@ class Config(object):
                 conn = self.getConnection()
                 conn.request("GET", _encode_utf8(href), "", self.getHeaders())
                 response = conn.getresponse()
-                checkResponse(response)
+                checkResponse(response, "href={0}".format(href))
                 data = response.read()
                 if data == b('resource not found'):
                     return b("")
                 else:
                     return data
-            except NotAuthException:
+            except ConnectionException:
                 raise
             except Exception:
                 e = sys.exc_info()[1]
@@ -390,7 +391,7 @@ class Config(object):
                     if f:
                         f.close()
                 return True
-            except NotAuthException:
+            except ConnectionException:
                 raise
             except Exception:
                 e = sys.exc_info()[1]
@@ -411,7 +412,7 @@ class Config(object):
                 response = conn.getresponse()
                 checkResponse(response)
                 return response.read()
-            except NotAuthException:
+            except ConnectionException:
                 raise
             except Exception:
                 e = sys.exc_info()[1]
@@ -437,7 +438,7 @@ class Config(object):
             checkResponse(response)
             data = response.read()
             return data
-        except NotAuthException:
+        except ConnectionException:
             raise
         except Exception:
             e = sys.exc_info()[1]
@@ -469,7 +470,7 @@ class Config(object):
                     _open = open(_encode_utf8(localpath), "r")
                 with _open as f:
                     return self.write(f, href, length=length)
-            except NotAuthException:
+            except ConnectionException:
                 raise
             except Exception:
                 e = sys.exc_info()[1]

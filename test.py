@@ -59,9 +59,8 @@ class TestAPI(unittest.TestCase):
         localfile = os.path.join(tempfile.gettempdir(), filename)
         folders, files = self.conf.list("/")
         self.assertFalse(filenamePath in files.keys())
-        data = self.conf.download(filenamePath)
-        self.assertEqual(data, b(""))
-        self.assertFalse(self.conf.downloadTo(filenamePath, localfile))
+        self.assertRaises(yandexwebdav.ConnectionException, self.conf.download, filenamePath)
+        self.assertRaises(yandexwebdav.ConnectionException, self.conf.downloadTo, filenamePath, localfile)
         self.assertFalse(os.path.exists(localfile))
 
 

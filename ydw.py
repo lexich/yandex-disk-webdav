@@ -141,6 +141,6 @@ if __name__ == "__main__":
     )
     try:
         main()
-    except yandexwebdav.NotAuthException:
+    except yandexwebdav.ConnectionException:
         e = sys.exc_info()[1]
         logger.exception(e)
