@@ -7,7 +7,7 @@ PY3 = sys.version_info[0] == 3
 
 if PY3:
   install_requires = ["six"]
-else
+else:
   install_requires = ["six", "simplejson"]
 README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 
