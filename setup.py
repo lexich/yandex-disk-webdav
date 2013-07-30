@@ -4,7 +4,7 @@ import os
 README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 setup(
     name='yandexwebdav',
-    version='0.2.7',
+    version='0.2.8',
     include_package_data=True,
     py_modules=['yandexwebdav'],
     url='https://github.com/lexich/yandex-disk-webdav',
