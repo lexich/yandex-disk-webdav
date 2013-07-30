@@ -110,10 +110,12 @@ def main():
     if opt.list:
         logger.info("list %s" % remote())
         res = conf.list(remote())
-        for folder in res[0].keys():
-            print("Folder: %s" % folder)
-        for filename in res[1].keys():
-            print("File: %s" % filename)
+        if res[0] is not None:
+            for folder in res[0].keys():
+                print("Folder: %s" % folder)
+        if res[1] is not None:
+            for filename in res[1].keys():
+                print("File: %s" % filename)
     elif opt.sync:
         logger.info("sync %s" % remote())
         conf.sync(local(), remote())
@@ -137,4 +139,8 @@ if __name__ == "__main__":
         level=logging.DEBUG,
         datefmt='%m-%d-%y %H:%M'
     )
-    main()
+    try:
+        main()
+    except yandexwebdav.NotAuthException:
+        e = sys.exc_info()[1]
+        logger.exception(e)

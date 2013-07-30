@@ -162,6 +162,19 @@ def apply_async(name, func, params_list, limit=5):
         th.start()
 
 
+class NotAuthException(Exception):
+    """docstring for NotAuthException"""
+
+    def __init__(self, code, msg=""):
+        strError = _("Not Authorization status code: {0}\n{1}").format(code, msg)
+        super(NotAuthException, self).__init__(strError)
+
+
+def checkResponse(response, msg=""):
+    if response.status != 207:
+        raise NotAuthException(response.status, msg)
+
+
 class Config(object):
     def __init__(self, opts):
         """
@@ -174,7 +187,6 @@ class Config(object):
         self.host = _encode_utf8(opts.get("host", "webdav.yandex.ru"))
         self.options = opts
         self.limit = opts.get("limit", 4)
-
 
     def getHeaders(self):
         """
@@ -210,6 +222,7 @@ class Config(object):
                 conn = self.getConnection()
                 conn.request("PROPFIND", _encode_utf8(href), u(""), self.getHeaders())
                 response = conn.getresponse()
+                checkResponse(response)
                 data = response.read()
                 if data == b('list: folder was not found'):
                     return folders, files
@@ -232,9 +245,12 @@ class Config(object):
                         e = sys.exc_info()[1]
                         logger.exception(e)
                 return folders, files
+            except NotAuthException:
+                raise
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
+            return folders, files
 
     def sync(self, localpath, href, exclude=None, block=True):
         """
@@ -288,6 +304,8 @@ class Config(object):
                         lambda localpath, href: self.sync(localpath, href, exclude, False),
                         [(localFolderPath, remoteFolderPath), ]
                     )
+        except NotAuthException:
+            raise
         except Exception:
             e = sys.exc_info()[1]
             logger.exception(e)
@@ -306,7 +324,11 @@ class Config(object):
                 href = remote(href)
                 con = self.getConnection()
                 con.request("MKCOL", _encode_utf8(href), "", self.getHeaders())
-                return con.getresponse().read()
+                response = con.getresponse()
+                checkResponse(response)
+                return response.read()
+            except NotAuthException:
+                raise
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
@@ -323,11 +345,15 @@ class Config(object):
                 href = remote(href)
                 conn = self.getConnection()
                 conn.request("GET", _encode_utf8(href), "", self.getHeaders())
-                data = conn.getresponse().read()
+                response = conn.getresponse()
+                checkResponse(response)
+                data = response.read()
                 if data == b('resource not found'):
                     return b("")
                 else:
                     return data
+            except NotAuthException:
+                raise
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
@@ -348,6 +374,7 @@ class Config(object):
                 conn = self.getConnection()
                 conn.request("GET", _encode_utf8(href), "", self.getHeaders())
                 response = conn.getresponse()
+                checkResponse(response)
                 f = None
                 try:
                     while True:
@@ -363,6 +390,8 @@ class Config(object):
                     if f:
                         f.close()
                 return True
+            except NotAuthException:
+                raise
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
@@ -379,7 +408,11 @@ class Config(object):
                 href = remote(href)
                 conn = self.getConnection()
                 conn.request("DELETE", _encode_utf8(href), "", self.getHeaders())
-                return conn.getresponse().read()
+                response = conn.getresponse()
+                checkResponse(response)
+                return response.read()
+            except NotAuthException:
+                raise
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
@@ -388,20 +421,27 @@ class Config(object):
         logger.info(u("write: %s") % href)
         href = remote(href)
         href = os.path.join(u("/"), href)
-        conn = self.getConnection()
-        headers = self.getHeaders()
-        headers.update({
-            "Content-Type": "application/binary",
-            "Expect": "100-continue"
-        })
-        if length:
-            headers["Content-Length"] = length
-        href = _encode_utf8(href)
-        href = quote(href)
-        conn.request("PUT", href, f, headers)
-        response = conn.getresponse()
-        data = response.read()
-        return data
+        try:
+            conn = self.getConnection()
+            headers = self.getHeaders()
+            headers.update({
+                "Content-Type": "application/binary",
+                "Expect": "100-continue"
+            })
+            if length:
+                headers["Content-Length"] = length
+            href = _encode_utf8(href)
+            href = quote(href)
+            conn.request("PUT", href, f, headers)
+            response = conn.getresponse()
+            checkResponse(response)
+            data = response.read()
+            return data
+        except NotAuthException:
+            raise
+        except Exception:
+            e = sys.exc_info()[1]
+            logger.exception(e)
 
     def upload(self, localpath, href):
         """
@@ -429,6 +469,8 @@ class Config(object):
                     _open = open(_encode_utf8(localpath), "r")
                 with _open as f:
                     return self.write(f, href, length=length)
+            except NotAuthException:
+                raise
             except Exception:
                 e = sys.exc_info()[1]
                 logger.exception(e)
