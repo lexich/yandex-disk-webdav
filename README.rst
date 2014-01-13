@@ -18,11 +18,15 @@ Or
 Or manual way
 
     python setup.py install
+    
+Source code
+
+    `github <https://github.com/lexich/yandex-disk-webdav>`_ 
 
 Using API
 =========
 
-    conf = Config({ "name":"<-- username -->", "password":"<-- password
+    conf = Config({ "user":"<-- username -->", "password":"<-- password
     -->" })
 
     conf.list(u"/") # list files and folder in root folder at remote
