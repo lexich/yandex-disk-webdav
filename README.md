@@ -16,10 +16,14 @@ Or manual way
 
 > python setup.py install
 
+Source code
+
+> [github](https://github.com/lexich/yandex-disk-webdav)
+
 # Using API
 ```python
 conf = Config({
-  "name":"<-- username -->",
+  "user":"<-- username -->",
   "password":"<-- password -->"
 })
 
