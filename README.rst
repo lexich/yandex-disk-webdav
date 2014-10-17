@@ -1,6 +1,8 @@
 yandex-disk-webdav
 ==================
-
+.. image:: https://badge.fury.io/py/yandexwebdav.svg
+    :target: http://badge.fury.io/py/yandexwebdav
+    
 Simple wrapper to work with yandex disk using webdav Basic Auth.
 Compatible python 2.6, 2.7, 3
 
