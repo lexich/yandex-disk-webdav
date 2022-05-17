@@ -76,7 +76,7 @@ After first execution is appearead interactive configurator. You need to input y
 password, host {webdaw.yandex.ru} and limit of threads, which used in parralel folder's sync.
 Config saves in ~/.yandexwebdavconf
 
-###List remote dir
+### List remote dir
 ```
  $ ydw.py --list -r //
  
@@ -91,7 +91,7 @@ Config saves in ~/.yandexwebdavconf
  File: /test.mp4
 ```
 
-###Sync local and remote folders
+### Sync local and remote folders
 ```
  $ ydw.py --sync -l /d/share/test -r //test
 
@@ -106,7 +106,7 @@ Config saves in ~/.yandexwebdavconf
  05-12-13 00:49 - upload(0): d:/share/test\test.txt /test/test.txt
 ```
 
-###Create dir
+### Create dir
 ```
  $ ydw.py --mkdir -r //test1
 
@@ -114,7 +114,7 @@ Config saves in ~/.yandexwebdavconf
 
  05-12-13 00:49 - mkdir(0): /test1
 ```
-###Download file
+### Download file
 ```
  $ ydw.py --download -l /d/share/test/test1.txt -r //test/test.txt
 
@@ -123,7 +123,7 @@ Config saves in ~/.yandexwebdavconf
  05-12-13 00:51 - downloadTo(0): //test/test.txt d:/share/test/test1.txt
 ```
 
-###Delete file
+### Delete file
 ```
  $ ydw.py --delete -r //test/test.txt
 
@@ -132,7 +132,7 @@ Config saves in ~/.yandexwebdavconf
  05-12-13 00:52 - delete(0): //test/test.txt
 ```
 
-###Upload file
+### Upload file
 ```
  $ ydw.py --upload -l /d/share/test/test.txt -r //test/test.txt
 
